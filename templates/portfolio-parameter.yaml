@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS Cloud Engineering Portfolio Lab
+
+Resources:
+  PortfolioParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /portfolio/environment
+      Type: String
+      Tier: Standard
+      Value: Development
+      Description: Portfolio lab configuration
+      Tags:
+        Company: Gonzalez
+        Project: AWSCloudPortfolio
+        Environment: Lab
+        ManagedBy: CloudFormation
+
+Outputs:
+  ParameterName:
+    Description: Created SSM parameter
+    Value: !Ref PortfolioParameter
