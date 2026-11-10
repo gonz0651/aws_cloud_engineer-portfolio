@@ -1,0 +1,46 @@
+name: Deploy CloudFormation Portfolio
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install CloudFormation linter
+        run: pip install cfn-lint
+
+      - name: Validate template
+        run: cfn-lint templates/portfolio-parameter.yaml
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::015312415472:role/GitHubPortfolioDeployRole
+          aws-region: us-east-1
+
+      - name: Create CloudFormation stack
+        run: |
+          aws cloudformation create-stack \
+            --stack-name portfolio-ssm-lab \
+            --template-body file://templates/portfolio-parameter.yaml \
+            --role-arn "$CF_SERVICE_ROLE_ARN"
+
+          aws cloudformation wait stack-create-complete \
+            --stack-name portfolio-ssm-lab
+        env:
+          CF_SERVICE_ROLE_ARN: arn:aws:iam::015312415472:role/CloudFormationPortfolioServiceRole
+
+      - name: Verify deployment
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name portfolio-ssm-lab \
+            --query 'Stacks[0].StackStatus'
