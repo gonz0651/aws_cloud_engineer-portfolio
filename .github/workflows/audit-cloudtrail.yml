@@ -1,1 +1,71 @@
 
+name: AWS CloudTrail Security Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::015312415472:role/GitHubPortfolioAuditRole
+          aws-region: us-east-1
+      
+      - name: Install AWS SDK for Python
+        run: python3 -m pip install boto3
+        
+      - name: Retrieve and summarize CloudTrail events
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import boto3
+          from collections import Counter
+          from datetime import datetime, timedelta, timezone
+
+          client = boto3.client("cloudtrail", region_name="us-east-1")
+
+          start = datetime.now(timezone.utc) - timedelta(days=7)
+
+          selected = {
+              "AssumeRoleWithWebIdentity",
+              "CreateStack",
+              "UpdateStack",
+              "DeleteStack",
+              "PutParameter"
+          }
+
+          counts = Counter()
+
+          paginator = client.get_paginator("lookup_events")
+
+          for page in paginator.paginate(
+              StartTime=start,
+              EndTime=datetime.now(timezone.utc),
+          ):
+              for event in page.get("Events", []):
+                  name = event.get("EventName", "")
+                  if name in selected:
+                      counts[name] += 1
+
+          print("AWS CloudTrail Security Audit")
+          print("Region: us-east-1")
+          print("Period: Last 7 days")
+          print("-----------------------------")
+
+          for name in sorted(selected):
+              print(f"{name}: {counts[name]}")
+
+          print("-----------------------------")
+          print(f"Total selected events: {sum(counts.values())}")
+          PY
