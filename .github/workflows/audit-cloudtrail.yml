@@ -27,9 +27,18 @@ jobs:
         
       - name: Retrieve and summarize CloudTrail events
         shell: bash
+        env: 
+          GRAFANA_LOKI_URL: https://logs-prod-021.grafana.net
+          GRAFANA_LOKI_USER: "1879593"
+          GRAFANA_LOKI_TOKEN: ${{ secrets.GRAFANA_LOKI_TOKEN }}
         run: |
           python3 - <<'PY'
           import boto3
+          import base64
+          import json
+          import os
+          import time
+          from urllib.request import Request, urlopen
           from collections import Counter
           from datetime import datetime, timedelta, timezone
 
@@ -68,4 +77,36 @@ jobs:
 
           print("-----------------------------")
           print(f"Total selected events: {sum(counts.values())}")
+          summary = {
+              "region": "us-east-1",
+              "window_days": 7,
+              "counts": {name: counts[name] for name in sorted(selected)},
+              "total": sum(counts.values()),
+          }
+
+          payload = {
+              "streams": [{
+                  "stream": {"job": "cloudtrail-audit"},
+                  "values": [[str(time.time_ns()), json.dumps(summary)]],
+              }],
+          }
+
+          token = os.environ.get("GRAFANA_LOKI_TOKEN")
+          if not token:
+              raise SystemExit("Missing GitHub Actions secret GRAFANA_LOKI_TOKEN")
+
+          credentials = f"{os.environ['GRAFANA_LOKI_USER']}:{token}"
+          authorization = base64.b64encode(credentials.encode()).decode()
+          request = Request(
+              os.environ["GRAFANA_LOKI_URL"].rstrip("/") + "/loki/api/v1/push",
+              data=json.dumps(payload).encode(),
+              headers={
+                  "Authorization": f"Basic {authorization}",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+
+          with urlopen(request, timeout=15) as response:
+              print(f"Loki upload status: {response.status}")
           PY
