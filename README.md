@@ -2,7 +2,7 @@
 
 ## AWS CloudTrail Security Audit
 
-** AWS CloudTrail → GitHub Actions → Grafana Loki **
+**AWS CloudTrail → GitHub Actions → Grafana Loki**
 
 GitHub Actions uses OIDC to assume a dedicated AWS IAM role and query CloudTrail Event History in us-east-1. The workflow sends aggregate event counts to Grafana Loki using a stack-scoped, write-only token stored in GitHub Actions secrets.
 
