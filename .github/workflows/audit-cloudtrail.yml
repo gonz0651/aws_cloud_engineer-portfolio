@@ -6,7 +6,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: readG
 
 jobs:
   audit:
@@ -15,16 +15,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+      
+      - name: Install AWS SDK for Python
+        run: python3 -m pip install boto3
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           role-to-assume: arn:aws:iam::015312415472:role/GitHubPortfolioAuditRole
           aws-region: us-east-1
-      
-      - name: Install AWS SDK for Python
-        run: python3 -m pip install boto3
-        
+
       - name: Retrieve and summarize CloudTrail events
         shell: bash
         env: 
